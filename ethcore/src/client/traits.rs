@@ -200,6 +200,14 @@ pub trait Call {
         state: &Self::State,
         header: &Header,
     ) -> Result<U256, CallError>;
+
+    /// Virtual Trace
+    fn virtual_trace(
+        &self,
+        t: &SignedTransaction,
+        state: &Self::State,
+        header: &Header,
+    ) -> Result<String, CallError>;
 }
 
 /// Provides `engine` method

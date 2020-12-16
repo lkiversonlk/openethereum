@@ -1156,6 +1156,33 @@ where
         ))
     }
 
+    fn virtual_trace(&self, request: CallRequest, num: Option<BlockNumber>) -> BoxFuture<String> {
+        let request = CallRequest::into(request);
+        let signed = try_bf!(fake_sign::sign_call(request));
+        let num = num.unwrap_or_default();
+
+        let (state, header) = if num == BlockNumber::Pending {
+            self.pending_state_and_header_with_fallback()
+        } else {
+            let id = match num {
+                BlockNumber::Num(num) => BlockId::Number(num),
+                BlockNumber::Earliest => BlockId::Earliest,
+                BlockNumber::Latest => BlockId::Latest,
+                BlockNumber::Pending => unreachable!(),
+            };
+
+            let state = try_bf!(self.client.state_at(id).ok_or_else(errors::state_pruned));
+            let header = try_bf!(self.client.block_header(id)
+			                      .ok_or_else(errors::state_pruned)
+			                      .and_then(|h| h.decode().map_err(errors::decode)));
+            (state, header)
+        };
+
+        Box::new(future::done(self.client.virtual_trace(&signed, &state, &header)
+            .map_err(errors::call)
+        ))
+    }
+
     fn compile_lll(&self, _: String) -> Result<Bytes> {
         Err(errors::deprecated(
             "Compilation of LLL via RPC is deprecated".to_string(),

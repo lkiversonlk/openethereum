@@ -517,6 +517,7 @@ impl<'a> CallCreateExecutive<'a> {
 
                 let mut inner = || {
                     Self::check_static_flag(params, self.static_flag, self.is_create)?;
+                    tracer.prepare_trace_call(&params, 0, false);
                     Self::transfer_exec_balance(params, self.schedule, state, substate)?;
 
                     Ok(FinalizationResult {
@@ -597,6 +598,7 @@ impl<'a> CallCreateExecutive<'a> {
                     let mut pre_inner = || {
                         Self::check_static_flag(&params, static_flag, is_create)?;
                         state.checkpoint();
+                        tracer.prepare_trace_call(&params, 0, false);
                         Self::transfer_exec_balance(&params, schedule, state, substate)?;
                         Ok(())
                     };

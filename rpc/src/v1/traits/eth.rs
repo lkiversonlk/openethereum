@@ -128,6 +128,9 @@ pub trait Eth {
     #[rpc(name = "eth_estimateGas")]
     fn estimate_gas(&self, _: CallRequest, _: Option<BlockNumber>) -> BoxFuture<U256>;
 
+    #[rpc(name = "eth_virtualTrace")]
+    fn virtual_trace(&self, _: CallRequest, _: Option<BlockNumber>) -> BoxFuture<String>;
+
     /// Get transaction by its hash.
     #[rpc(name = "eth_getTransactionByHash")]
     fn transaction_by_hash(&self, _: H256) -> BoxFuture<Option<Transaction>>;

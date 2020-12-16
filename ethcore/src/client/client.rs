@@ -87,7 +87,7 @@ use state::{self, State};
 use state_db::StateDB;
 use stats::{prometheus, prometheus_counter, prometheus_gauge, PrometheusMetrics};
 use trace::{
-    self, Database as TraceDatabase, ImportRequest as TraceImportRequest, LocalizedTrace, TraceDB,
+    self, Database as TraceDatabase, ImportRequest as TraceImportRequest, LocalizedTrace, TraceDB, CustomTracer, CustomVmTracer,
 };
 use transaction_ext::Transaction;
 use verification::{
@@ -1917,6 +1917,49 @@ impl Call for Client {
         // binary chop to non-excepting call with gas somewhere between 21000 and block gas limit
         trace!(target: "estimate_gas", "estimate_gas chopping {} .. {}", lower, upper);
         binary_chop(lower, upper, cond)
+    }
+
+    fn virtual_trace(&self, t: &SignedTransaction, state: &Self::State, header: &Header) -> Result<String, CallError> {
+        let mut upper = *header.gas_limit();
+        let max_upper = upper * U256::from(10);
+        let env_info = EnvInfo {
+            number: header.number(),
+            author: *header.author(),
+            timestamp: header.timestamp(),
+            difficulty: *header.difficulty(),
+            last_hashes: self.build_last_hashes(header.parent_hash()),
+            gas_used: U256::default(),
+            gas_limit: max_upper,
+        };
+
+        let sender = t.sender();
+        let options = || TransactOptions::new(CustomTracer::new(), CustomVmTracer).dont_check_nonce();
+
+        let exec = |gas| {
+            let mut tx = t.as_unsigned().clone();
+            tx.gas = gas;
+            let tx = tx.fake_sign(sender);
+            let mut clone = state.clone();
+            let machine = self.engine.machine();
+            let schedule = machine.schedule(env_info.number);
+            Executive::new(&mut clone, &env_info, &machine, &schedule)
+                .transact_virtual(&tx, options())
+        };
+
+        match exec(upper) {
+            Ok(v) => {
+                if let Some(exception) = v.exception {
+                    return Err(CallError::Exceptional(exception))
+                } else {
+                    return Ok(v.trace.join(";"))
+                }
+            },
+            Err(_e) => {
+                trace!(target: "virtual_trace", "virtual_trace failed with {}", upper);
+                let err = ExecutionError::Internal(format!("Require higher than upper limit of {}", upper));
+                return Err(err.into())
+            }
+        }
     }
 }
 

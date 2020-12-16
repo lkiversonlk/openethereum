@@ -22,6 +22,7 @@ mod executive_tracer;
 mod import;
 mod noop_tracer;
 mod types;
+mod custom_tracer;
 
 pub use self::{
     config::Config,
@@ -30,6 +31,7 @@ pub use self::{
     import::ImportRequest,
     localized::LocalizedTrace,
     noop_tracer::{NoopTracer, NoopVMTracer},
+    custom_tracer::{CustomTracer, CustomVmTracer},
 };
 
 pub use self::types::{
