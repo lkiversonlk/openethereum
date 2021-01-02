@@ -1991,7 +1991,7 @@ impl Call for Client {
 
         let exec = |gas| {
             let mut tx = t.as_unsigned().clone();
-            tx.gas = gas;
+            tx.tx_mut().gas = gas;
             let tx = tx.fake_sign(sender);
             let mut clone = state.clone();
             let machine = self.engine.machine();
